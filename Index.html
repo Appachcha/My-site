@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin - Shoe Catalog</title>
+<script src="/storage/emulated/0/webapp1/db.js"></script>
+<style>
+body{font-family:Arial;padding:10px;}
+h1{color:#333;}
+.product{border:1px solid #ccc;padding:10px;margin:10px 0;}
+img{max-width:100px;margin:5px;}
+label{display:block;margin-top:5px;}
+button{margin-top:5px;padding:5px 10px;}
+</style>
+</head>
+<body>
+<nav>
+  <a href="/storage/emulated/0/webapp1 /admin.html">
+    admin
+  </a>
+  <a href="/storage/emulated/0/webapp1 /catalog.html">
+    catalog 
+  </a>
+  <!--Tab to edit-->
+</nav>  
+
+<h1>Admin Panel</h1>
+<form id="productForm">
+<label>Code: <input type="text" id="code" required></label>
+<label>Name: <input type="text" id="name" required></label>
+<label>Price: <input type="number" id="price" required></label>
+<label>Sizes (comma separated): <input type="text" id="sizes" placeholder="40,41,42"></label>
+<label>Upload Photos: <input type="file" id="photos" multiple accept="image/*"></label>
+<button type="submit">Add / Update Product</button>
+</form>
+
+<h2>Existing Products</h2>
+<div id="productList"></div>
+
+<script>
+async function renderProducts(){
+  let products = await DB.getAllProducts();
+  let container = document.getElementById("productList");
+  container.innerHTML = "";
+  products.forEach(prod=>{
+    let div = document.createElement("div");
+    div.className = "product";
+    div.innerHTML = `<b>${prod.code} - ${prod.name}</b><br>
+      Price: ${prod.price}<br>
+      Sizes: ${prod.sizes.join(", ")}<br>
+      ${prod.photos.map(p=>`<img src="${p}">`).join("")}<br>
+      <button onclick="deleteProduct('${prod.code}')">Delete</button>`;
+    container.appendChild(div);
+  });
+}
+
+document.getElementById("productForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  let code = document.getElementById("code").value.trim();
+  let name = document.getElementById("name").value.trim();
+  let price = parseFloat(document.getElementById("price").value);
+  let sizes = document.getElementById("sizes").value.split(",").map(s=>s.trim());
+  let files = document.getElementById("photos").files;
+  let photos = [];
+  for (let f of files){
+    let reader = new FileReader();
+    photos.push(await new Promise(res=>{
+      reader.onload=()=>res(reader.result);
+      reader.readAsDataURL(f);
+    }));
+  }
+  await DB.addProduct({code,name,price,sizes,photos});
+  e.target.reset();
+  renderProducts();
+});
+
+async function deleteProduct(code){
+  await DB.deleteProduct(code);
+  renderProducts();
+}
+
+renderProducts();
+</script>
+</body>
+</html>

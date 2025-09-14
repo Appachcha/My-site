@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Catalog - Orders</title>
+<script src="/storage/emulated/0/webapp1/db.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+body{font-family:Arial;padding:10px;}
+h1{color:#333;}
+.product{border:1px solid #ccc;padding:10px;margin:10px 0;}
+img{max-width:100px;margin:5px;}
+input[type=number]{width:50px;}
+button{margin-top:5px;padding:5px 10px;}
+table{border-collapse:collapse;margin-top:5px;}
+th,td{border:1px solid #ccc;padding:3px;text-align:center;}
+</style>
+</head>
+<body>
+  <nav>
+  <a href="/storage/emulated/0/webapp1/admin.html">
+    admin
+  </a>
+  <a href="/storage/emulated/0/webapp1/catalog.html">
+    catalog 
+  </a>
+  <!--Tab to edit-->
+</nav>  
+<h1>Product Catalog</h1>
+<div id="catalog"></div>
+<button onclick="generateInvoice()">Generate Invoice PDF</button>
+
+<script>
+let orders = {};
+
+async function renderCatalog(){
+  let products = await DB.getAllProducts();
+  let container = document.getElementById("catalog");
+  container.innerHTML = "";
+  products.forEach(prod=>{
+    let div = document.createElement("div");
+    div.className="product";
+    div.innerHTML=`<b>${prod.code} - ${prod.name}</b><br>
+      Unit price: ${prod.price}<br>
+      ${prod.photos.map(p=>`<img src="${p}">`).join("")}
+      <table>
+        <tr><th>Size</th><th>Qty</th></tr>
+        ${prod.sizes.map(size=>`
+          <tr>
+            <td>${size}</td>
+            <td><input type="number" min="0" value="0"
+              onchange="updateOrder('${prod.code}','${size}',this.value,${prod.price})"></td>
+          </tr>`).join("")}
+      </table>`;
+    container.appendChild(div);
+  });
+}
+
+function updateOrder(code,size,qty,price){
+  if(!orders[code]) orders[code]={sizes:{},price};
+  orders[code].sizes[size]=parseInt(qty);
+}
+
+async function generateInvoice(){
+  const { jsPDF } = window.jspdf;
+  let doc = new jsPDF();
+  doc.setFontSize(16);
+  doc.text("Invoice",10,10);
+  let y=20;
+  let total=0;
+  for(let code in orders){
+    let prod = orders[code];
+    for(let size in prod.sizes){
+      let qty = prod.sizes[size];
+      if(qty>0){
+        let lineTotal = qty*prod.price;
+        doc.text(`${code} - Size ${size} - Qty ${qty} - Rs ${lineTotal}`,10,y);
+        y+=10;
+        total+=lineTotal;
+      }
+    }
+  }
+  doc.text(`Total: Rs ${total}`,10,y+10);
+  let fname=`invoice_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.pdf`;
+  doc.save(fname);
+}
+
+renderCatalog();
+</script>
+</body>
+</html>
